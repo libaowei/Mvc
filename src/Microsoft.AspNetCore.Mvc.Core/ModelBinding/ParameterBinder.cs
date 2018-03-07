@@ -18,9 +18,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
     {
         private readonly IModelMetadataProvider _modelMetadataProvider;
         private readonly IModelBinderFactory _modelBinderFactory;
-        private readonly IObjectModelValidator _validatorForBackCompatOnly;
-        private readonly IModelValidatorProvider _validatorProvider;
-        private readonly ValidatorCache _validatorCache;
+        private readonly IObjectModelValidator _objectModelValidator;
 
         /// <summary>
         /// <para>This constructor is obsolete and will be removed in a future version. The recommended alternative
@@ -29,19 +27,14 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
         /// </summary>
         /// <param name="modelMetadataProvider">The <see cref="IModelMetadataProvider"/>.</param>
         /// <param name="modelBinderFactory">The <see cref="IModelBinderFactory"/>.</param>
-        /// <param name="validatorProvider">The <see cref="IModelValidatorProvider"/>.</param>
+        /// <param name="validator">The <see cref="IObjectModelValidator"/>.</param>
         [Obsolete("This constructor is obsolete and will be removed in a future version. The recommended alternative"
             + " is the overload that also takes an " + nameof(ILoggerFactory) + ".")]
         public ParameterBinder(
             IModelMetadataProvider modelMetadataProvider,
             IModelBinderFactory modelBinderFactory,
-            IModelValidatorProvider validatorProvider)
-            : this(
-                  modelMetadataProvider,
-                  modelBinderFactory,
-                  validatorProvider,
-                  validatorForBackCompatOnly: null,
-                  loggerFactory: NullLoggerFactory.Instance)
+            IObjectModelValidator validator)
+            : this(modelMetadataProvider, modelBinderFactory, validator, NullLoggerFactory.Instance)
         {
         }
 
@@ -50,63 +43,12 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
         /// </summary>
         /// <param name="modelMetadataProvider">The <see cref="IModelMetadataProvider"/>.</param>
         /// <param name="modelBinderFactory">The <see cref="IModelBinderFactory"/>.</param>
-        /// <param name="validatorProvider">The <see cref="IModelValidatorProvider"/>.</param>
+        /// <param name="validator">The <see cref="IObjectModelValidator"/>.</param>
         /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
         public ParameterBinder(
             IModelMetadataProvider modelMetadataProvider,
             IModelBinderFactory modelBinderFactory,
-            IModelValidatorProvider validatorProvider,
-            ILoggerFactory loggerFactory)
-            : this(
-                  modelMetadataProvider,
-                  modelBinderFactory,
-                  validatorProvider,
-                  validatorForBackCompatOnly: null,
-                  loggerFactory: loggerFactory)
-        {
-            if (validatorProvider == null)
-            {
-                throw new ArgumentNullException(nameof(validatorProvider));
-            }
-        }
-
-        /// <summary>
-        /// <para>This constructor is obsolete and will be removed in a future version. The recommended alternative
-        /// is the overload that also takes an <see cref="IModelValidatorProvider"/> and <see cref="ILoggerFactory"/>
-        /// instead of an <see cref="IObjectModelValidator"/>.</para>
-        /// <para>Initializes a new instance of <see cref="ParameterBinder"/>.</para>
-        /// </summary>
-        /// <param name="modelMetadataProvider">The <see cref="IModelMetadataProvider"/>.</param>
-        /// <param name="modelBinderFactory">The <see cref="IModelBinderFactory"/>.</param>
-        /// <param name="validator">The <see cref="IObjectModelValidator"/>.</param>
-        [Obsolete("This constructor is obsolete and will be removed in a future version. The recommended alternative"
-            + " is the overload that takes an " + nameof(IModelValidatorProvider) + " and " + nameof(ILoggerFactory)
-            + " instead of an " + nameof(IObjectModelValidator) + ".")]
-        public ParameterBinder(
-            IModelMetadataProvider modelMetadataProvider,
-            IModelBinderFactory modelBinderFactory,
-            IObjectModelValidator validator)
-            : this(
-                  modelMetadataProvider,
-                  modelBinderFactory,
-                  validatorProvider: null,
-                  validatorForBackCompatOnly: validator,
-                  loggerFactory: NullLoggerFactory.Instance)
-        {
-            // Note: When this obsolete constructor overload is removed, also remember
-            // to remove the validatorForBackCompatOnly field.
-
-            if (validator == null)
-            {
-                throw new ArgumentNullException(nameof(validator));
-            }
-        }
-
-        private ParameterBinder(
-            IModelMetadataProvider modelMetadataProvider,
-            IModelBinderFactory modelBinderFactory,
-            IModelValidatorProvider validatorProvider,
-            IObjectModelValidator validatorForBackCompatOnly,
+            IObjectModelValidator validator,
             ILoggerFactory loggerFactory)
         {
             if (modelMetadataProvider == null)
@@ -119,6 +61,11 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
                 throw new ArgumentNullException(nameof(modelBinderFactory));
             }
 
+            if (validator == null)
+            {
+                throw new ArgumentNullException(nameof(validator));
+            }
+
             if (loggerFactory == null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
@@ -126,9 +73,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
 
             _modelMetadataProvider = modelMetadataProvider;
             _modelBinderFactory = modelBinderFactory;
-            _validatorProvider = validatorProvider;
-            _validatorForBackCompatOnly = validatorForBackCompatOnly;
-            _validatorCache = new ValidatorCache();
+            _objectModelValidator = validator;
             Logger = loggerFactory.CreateLogger(GetType());
         }
 
@@ -279,60 +224,49 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
 
             var modelBindingResult = modelBindingContext.Result;
 
-            if (_validatorForBackCompatOnly != null)
+            Logger.AttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
+
+            Validate(actionContext, metadata, modelBindingContext, modelBindingResult);
+
+            Logger.DoneAttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
+
+            return modelBindingResult;
+        }
+
+        private void Validate(
+            ActionContext actionContext,
+            ModelMetadata metadata,
+            ModelBindingContext modelBindingContext,
+            ModelBindingResult modelBindingResult)
+        {
+            // Validate top level properties only if users inherited from this base type,
+            // otherwise fallback to earlier behavior.
+            if (_objectModelValidator is ObjectValidatorBase validator)
             {
-                // Since we don't have access to an IModelValidatorProvider, fall back
-                // on back-compatibility logic. In this scenario, top-level validation
-                // attributes will be ignored like they were historically.
-                if (modelBindingResult.IsModelSet)
+                if (!modelBindingResult.IsModelSet && metadata.IsBindingRequired)
                 {
-                    _validatorForBackCompatOnly.Validate(
+                    // Enforce BindingBehavior.Required (e.g., [BindRequired])
+                    var modelName = modelBindingContext.FieldName;
+                    var message = metadata.ModelBindingMessageProvider.MissingBindRequiredValueAccessor(modelName);
+                    actionContext.ModelState.TryAddModelError(modelName, message);
+                }
+                else if (modelBindingResult.IsModelSet || metadata.IsRequired)
+                {
+                    validator.Validate(
                         actionContext,
                         modelBindingContext.ValidationState,
+                        metadata,
                         modelBindingContext.ModelName,
                         modelBindingResult.Model);
                 }
             }
             else
             {
-                Logger.AttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
-
-                EnforceBindRequiredAndValidate(
+                _objectModelValidator.Validate(
                     actionContext,
-                    metadata,
-                    modelBindingContext,
-                    modelBindingResult);
-
-                Logger.DoneAttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
-            }
-
-            return modelBindingResult;
-        }
-
-        private void EnforceBindRequiredAndValidate(ActionContext actionContext, ModelMetadata metadata, ModelBindingContext modelBindingContext, ModelBindingResult modelBindingResult)
-        {
-            if (!modelBindingResult.IsModelSet && metadata.IsBindingRequired)
-            {
-                // Enforce BindingBehavior.Required (e.g., [BindRequired])
-                var modelName = modelBindingContext.FieldName;
-                var message = metadata.ModelBindingMessageProvider.MissingBindRequiredValueAccessor(modelName);
-                actionContext.ModelState.TryAddModelError(modelName, message);
-            }
-            else if (modelBindingResult.IsModelSet || metadata.IsRequired)
-            {
-                // Enforce any other validation rules
-                var visitor = new ValidationVisitor(
-                    actionContext,
-                    _validatorProvider,
-                    _validatorCache,
-                    _modelMetadataProvider,
-                    modelBindingContext.ValidationState);
-
-                visitor.Validate(
-                    metadata,
+                    modelBindingContext.ValidationState,
                     modelBindingContext.ModelName,
-                    modelBindingResult.Model,
-                    alwaysValidateAtTopLevel: metadata.IsRequired);
+                    modelBindingResult.Model);
             }
         }
     }
