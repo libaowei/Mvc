@@ -1368,6 +1368,48 @@ namespace Microsoft.AspNetCore.Mvc.Core
         internal static string FormatVirtualFileResultExecutor_NoFileProviderConfigured()
             => GetString("VirtualFileResultExecutor_NoFileProviderConfigured");
 
+        /// <summary>
+        /// Type {0} specified by {1} is invalid. Type specified by {1} must derive from {2}.
+        /// </summary>
+        internal static string ApplicationPartFactory_InvalidFactoryType
+        {
+            get => GetString("ApplicationPartFactory_InvalidFactoryType");
+        }
+
+        /// <summary>
+        /// Type {0} specified by {1} is invalid. Type specified by {1} must derive from {2}.
+        /// </summary>
+        internal static string FormatApplicationPartFactory_InvalidFactoryType(object p0, object p1, object p2)
+            => string.Format(CultureInfo.CurrentCulture, GetString("ApplicationPartFactory_InvalidFactoryType"), p0, p1, p2);
+
+        /// <summary>
+        /// {0} specified on {1} cannot be self referential.
+        /// </summary>
+        internal static string RelatedAssemblyAttribute_AssemblyCannotReferenceSelf
+        {
+            get => GetString("RelatedAssemblyAttribute_AssemblyCannotReferenceSelf");
+        }
+
+        /// <summary>
+        /// {0} specified on {1} cannot be self referential.
+        /// </summary>
+        internal static string FormatRelatedAssemblyAttribute_AssemblyCannotReferenceSelf(object p0, object p1)
+            => string.Format(CultureInfo.CurrentCulture, GetString("RelatedAssemblyAttribute_AssemblyCannotReferenceSelf"), p0, p1);
+
+        /// <summary>
+        /// Related assembly '{0}' specified by assembly '{1}' could not be found in the directory {2}. Related assemblies must be co-located with the specifying assemblies.
+        /// </summary>
+        internal static string RelatedAssemblyAttribute_CouldNotBeFound
+        {
+            get => GetString("RelatedAssemblyAttribute_CouldNotBeFound");
+        }
+
+        /// <summary>
+        /// Related assembly '{0}' specified by assembly '{1}' could not be found in the directory {2}. Related assemblies must be co-located with the specifying assemblies.
+        /// </summary>
+        internal static string FormatRelatedAssemblyAttribute_CouldNotBeFound(object p0, object p1, object p2)
+            => string.Format(CultureInfo.CurrentCulture, GetString("RelatedAssemblyAttribute_CouldNotBeFound"), p0, p1, p2);
+
         private static string GetString(string name, params string[] formatterNames)
         {
             var value = _resourceManager.GetString(name);
