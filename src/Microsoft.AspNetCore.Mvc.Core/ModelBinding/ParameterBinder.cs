@@ -222,49 +222,62 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
 
             Logger.DoneAttemptingToBindParameterOrProperty(parameter, modelBindingContext);
 
-            var modelBindingResult = modelBindingContext.Result;
-
             Logger.AttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
 
-            Validate(actionContext, metadata, modelBindingContext, modelBindingResult);
+            var modelBindingResult = modelBindingContext.Result;
 
-            Logger.DoneAttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
-
-            return modelBindingResult;
-        }
-
-        private void Validate(
-            ActionContext actionContext,
-            ModelMetadata metadata,
-            ModelBindingContext modelBindingContext,
-            ModelBindingResult modelBindingResult)
-        {
-            // Validate top level properties only if users inherited from this base type,
-            // otherwise fallback to earlier behavior.
-            if (_objectModelValidator is ObjectValidatorBase validator)
+            // To maintain back compat, perform top level validation only when the validator
+            // inherits from the base type.
+            var baseObjectValidator = _objectModelValidator as ObjectValidatorBase;
+            if (baseObjectValidator == null)
             {
-                if (!modelBindingResult.IsModelSet && metadata.IsBindingRequired)
+                if (modelBindingResult.IsModelSet)
                 {
-                    // Enforce BindingBehavior.Required (e.g., [BindRequired])
-                    var modelName = modelBindingContext.FieldName;
-                    var message = metadata.ModelBindingMessageProvider.MissingBindRequiredValueAccessor(modelName);
-                    actionContext.ModelState.TryAddModelError(modelName, message);
-                }
-                else if (modelBindingResult.IsModelSet || metadata.IsRequired)
-                {
-                    validator.Validate(
+                    _objectModelValidator.Validate(
                         actionContext,
                         modelBindingContext.ValidationState,
-                        metadata,
                         modelBindingContext.ModelName,
                         modelBindingResult.Model);
                 }
             }
             else
             {
-                _objectModelValidator.Validate(
+                Logger.AttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
+
+                EnforceBindRequiredAndValidate(
+                    baseObjectValidator,
+                    actionContext,
+                    metadata,
+                    modelBindingContext,
+                    modelBindingResult);
+
+                Logger.DoneAttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
+            }
+
+            return modelBindingResult;
+        }
+
+        private void EnforceBindRequiredAndValidate(
+            ObjectValidatorBase baseObjectValidator,
+            ActionContext actionContext,
+            ModelMetadata metadata,
+            ModelBindingContext modelBindingContext,
+            ModelBindingResult modelBindingResult)
+        {
+            if (!modelBindingResult.IsModelSet && metadata.IsBindingRequired)
+            {
+                // Enforce BindingBehavior.Required (e.g., [BindRequired])
+                var modelName = modelBindingContext.FieldName;
+                var message = metadata.ModelBindingMessageProvider.MissingBindRequiredValueAccessor(modelName);
+                actionContext.ModelState.TryAddModelError(modelName, message);
+            }
+            else if (modelBindingResult.IsModelSet || metadata.IsRequired)
+            {
+                // Enforce any other validation rules
+                baseObjectValidator.Validate(
                     actionContext,
                     modelBindingContext.ValidationState,
+                    metadata,
                     modelBindingContext.ModelName,
                     modelBindingResult.Model);
             }

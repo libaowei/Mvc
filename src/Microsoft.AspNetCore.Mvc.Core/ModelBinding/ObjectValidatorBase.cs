@@ -8,12 +8,20 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace Microsoft.AspNetCore.Mvc.ModelBinding
 {
+    /// <summary>
+    /// Provides base implementation for validating an object graph.
+    /// </summary>
     public abstract class ObjectValidatorBase : IObjectModelValidator
     {
         private readonly IModelMetadataProvider _modelMetadataProvider;
         private readonly ValidatorCache _validatorCache;
         private readonly CompositeModelValidatorProvider _validatorProvider;
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="ObjectValidatorBase"/>.
+        /// </summary>
+        /// <param name="modelMetadataProvider">The <see cref="ModelMetadataProvider"/>.</param>
+        /// <param name="validatorProviders">The list of <see cref="IModelValidatorProvider"/>.</param>
         public ObjectValidatorBase(
             IModelMetadataProvider modelMetadataProvider,
             IList<IModelValidatorProvider> validatorProviders)
