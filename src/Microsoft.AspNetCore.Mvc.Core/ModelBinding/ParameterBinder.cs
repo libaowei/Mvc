@@ -222,15 +222,14 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
 
             Logger.DoneAttemptingToBindParameterOrProperty(parameter, modelBindingContext);
 
-            Logger.AttemptingToValidateParameterOrProperty(parameter, modelBindingContext);
-
             var modelBindingResult = modelBindingContext.Result;
 
-            // To maintain back compat, perform top level validation only when the validator
-            // inherits from the base type.
-            var baseObjectValidator = _objectModelValidator as ObjectValidatorBase;
+            var baseObjectValidator = _objectModelValidator as ObjectModelValidator;
             if (baseObjectValidator == null)
             {
+                // For legacy implementations (which directly implemented IObjectModelValidator), fall back to the
+                // back-compatibility logic. In this scenario, top-level validation attributes will be ignored like
+                // they were historically.
                 if (modelBindingResult.IsModelSet)
                 {
                     _objectModelValidator.Validate(
@@ -258,7 +257,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
         }
 
         private void EnforceBindRequiredAndValidate(
-            ObjectValidatorBase baseObjectValidator,
+            ObjectModelValidator baseObjectValidator,
             ActionContext actionContext,
             ModelMetadata metadata,
             ModelBindingContext modelBindingContext,
@@ -277,9 +276,9 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
                 baseObjectValidator.Validate(
                     actionContext,
                     modelBindingContext.ValidationState,
-                    metadata,
                     modelBindingContext.ModelName,
-                    modelBindingResult.Model);
+                    modelBindingResult.Model,
+                    metadata);
             }
         }
     }

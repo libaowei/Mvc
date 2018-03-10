@@ -50,9 +50,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 .Verifiable();
 
             var mockValidator = new Mock<IModelValidator>(MockBehavior.Strict);
-            mockValidator
-                .Setup(o => o.Validate(
-                    It.IsAny<ModelValidationContext>()));
+            mockValidator.Setup(o => o.Validate(It.IsAny<ModelValidationContext>()));
 
             var factory = GetModelBinderFactory(binder.Object);
             var modelMetadataProvider = TestModelMetadataProvider.CreateDefaultProvider();
@@ -107,9 +105,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 .Verifiable();
 
             var mockValidator = new Mock<IModelValidator>(MockBehavior.Strict);
-            mockValidator
-                .Setup(o => o.Validate(
-                    It.IsAny<ModelValidationContext>()));
+            mockValidator.Setup(o => o.Validate(It.IsAny<ModelValidationContext>()));
             var factory = GetModelBinderFactory(binder.Object);
             var modelMetadataProvider = TestModelMetadataProvider.CreateDefaultProvider();
             var controller = new TestController();
@@ -461,9 +457,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 .Returns(Task.CompletedTask);
 
             var mockValidator = new Mock<IModelValidator>(MockBehavior.Strict);
-            mockValidator
-                .Setup(o => o.Validate(
-                    It.IsAny<ModelValidationContext>()));
+            mockValidator.Setup(o => o.Validate(It.IsAny<ModelValidationContext>()));
             var factory = GetModelBinderFactory(binder.Object);
             var controller = new TestController();
             var modelMetadataProvider = TestModelMetadataProvider.CreateDefaultProvider();
@@ -610,9 +604,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 .Returns(Task.CompletedTask);
 
             var mockValidator = new Mock<IModelValidator>(MockBehavior.Strict);
-            mockValidator
-                .Setup(o => o.Validate(
-                    It.IsAny<ModelValidationContext>()));
+            mockValidator.Setup(o => o.Validate(It.IsAny<ModelValidationContext>()));
             var factory = GetModelBinderFactory(binder.Object);
             var modelMetadataProvider = TestModelMetadataProvider.CreateDefaultProvider();
             var parameterBinder = new ParameterBinder(

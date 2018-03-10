@@ -10,7 +10,7 @@ namespace Microsoft.AspNetCore.Mvc.Internal
     /// <summary>
     /// The default implementation of <see cref="IObjectModelValidator"/>.
     /// </summary>
-    public class DefaultObjectValidator : ObjectValidatorBase
+    public class DefaultObjectValidator : ObjectModelValidator
     {
         /// <summary>
         /// Initializes a new instance of <see cref="DefaultObjectValidator"/>.

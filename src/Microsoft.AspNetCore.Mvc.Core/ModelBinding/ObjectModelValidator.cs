@@ -9,20 +9,20 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 namespace Microsoft.AspNetCore.Mvc.ModelBinding
 {
     /// <summary>
-    /// Provides base implementation for validating an object graph.
+    /// Provides a base <see cref="IObjectModelValidator"/> implementation for validating an object graph.
     /// </summary>
-    public abstract class ObjectValidatorBase : IObjectModelValidator
+    public abstract class ObjectModelValidator : IObjectModelValidator
     {
         private readonly IModelMetadataProvider _modelMetadataProvider;
         private readonly ValidatorCache _validatorCache;
         private readonly CompositeModelValidatorProvider _validatorProvider;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="ObjectValidatorBase"/>.
+        /// Initializes a new instance of <see cref="ObjectModelValidator"/>.
         /// </summary>
         /// <param name="modelMetadataProvider">The <see cref="ModelMetadataProvider"/>.</param>
         /// <param name="validatorProviders">The list of <see cref="IModelValidatorProvider"/>.</param>
-        public ObjectValidatorBase(
+        public ObjectModelValidator(
             IModelMetadataProvider modelMetadataProvider,
             IList<IModelValidatorProvider> validatorProviders)
         {
@@ -42,7 +42,13 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
             _validatorProvider = new CompositeModelValidatorProvider(validatorProviders);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Validates the provided object model.
+        /// </summary>
+        /// <param name="actionContext">The <see cref="ActionContext"/>.</param>
+        /// <param name="validationState">The <see cref="ValidationStateDictionary"/>.</param>
+        /// <param name="prefix">The model prefix key.</param>
+        /// <param name="model">The model object.</param>
         public virtual void Validate(
             ActionContext actionContext,
             ValidationStateDictionary validationState,
@@ -60,12 +66,22 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
             visitor.Validate(metadata, prefix, model, alwaysValidateAtTopLevel: false);
         }
 
+        /// <summary>
+        /// Validates the provided object model.
+        /// Depending upon the model metadata's <see cref="ModelMetadata.IsBindingRequired"/>, it can perform
+        /// validation even when the model object is <c>null</c>.
+        /// </summary>
+        /// <param name="actionContext">The <see cref="ActionContext"/>.</param>
+        /// <param name="validationState">The <see cref="ValidationStateDictionary"/>.</param>
+        /// <param name="prefix">The model prefix key.</param>
+        /// <param name="model">The model object.</param>
+        /// <param name="metadata">The <see cref="ModelMetadata"/>.</param>
         public virtual void Validate(
             ActionContext actionContext,
             ValidationStateDictionary validationState,
-            ModelMetadata metadata,
             string prefix,
-            object model)
+            object model,
+            ModelMetadata metadata)
         {
             var visitor = GetValidationVisitor(
                 actionContext,
@@ -74,9 +90,18 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
                 _modelMetadataProvider,
                 validationState);
 
-            visitor.Validate(metadata, prefix, model, metadata.IsRequired);
+            visitor.Validate(metadata, prefix, model, alwaysValidateAtTopLevel: metadata.IsRequired);
         }
 
+        /// <summary>
+        /// Gets a <see cref="ValidationVisitor"/> that traverses the object model graph and performs validation.
+        /// </summary>
+        /// <param name="actionContext">The <see cref="ActionContext"/>.</param>
+        /// <param name="validatorProvider">The <see cref="IModelValidatorProvider"/>.</param>
+        /// <param name="validatorCache">The <see cref="ValidatorCache"/>.</param>
+        /// <param name="metadataProvider">The <see cref="IModelMetadataProvider"/>.</param>
+        /// <param name="validationState">The <see cref="ValidationStateDictionary"/>.</param>
+        /// <returns></returns>
         public abstract ValidationVisitor GetValidationVisitor(
             ActionContext actionContext,
             IModelValidatorProvider validatorProvider,
