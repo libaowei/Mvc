@@ -42,13 +42,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
             _validatorProvider = new CompositeModelValidatorProvider(validatorProviders);
         }
 
-        /// <summary>
-        /// Validates the provided object model.
-        /// </summary>
-        /// <param name="actionContext">The <see cref="ActionContext"/>.</param>
-        /// <param name="validationState">The <see cref="ValidationStateDictionary"/>.</param>
-        /// <param name="prefix">The model prefix key.</param>
-        /// <param name="model">The model object.</param>
+        /// <inheritdoc />
         public virtual void Validate(
             ActionContext actionContext,
             ValidationStateDictionary validationState,
@@ -68,8 +62,10 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
 
         /// <summary>
         /// Validates the provided object model.
-        /// Depending upon the model metadata's <see cref="ModelMetadata.IsBindingRequired"/>, it can perform
-        /// validation even when the model object is <c>null</c>.
+        /// If <paramref name="model"/> is <see langword="null"/> and the <paramref name="metadata"/>'s
+        /// <see cref="ModelMetadata.IsRequired"/> is <see langword="true"/>, will add one or more
+        /// model state errors that <see cref="Validate(ActionContext, ValidationStateDictionary, string, object)"/>
+        /// would not.
         /// </summary>
         /// <param name="actionContext">The <see cref="ActionContext"/>.</param>
         /// <param name="validationState">The <see cref="ValidationStateDictionary"/>.</param>
@@ -101,7 +97,7 @@ namespace Microsoft.AspNetCore.Mvc.ModelBinding
         /// <param name="validatorCache">The <see cref="ValidatorCache"/>.</param>
         /// <param name="metadataProvider">The <see cref="IModelMetadataProvider"/>.</param>
         /// <param name="validationState">The <see cref="ValidationStateDictionary"/>.</param>
-        /// <returns></returns>
+        /// <returns>A <see cref="ValidationVisitor"/> which traverses the object model graph.</returns>
         public abstract ValidationVisitor GetValidationVisitor(
             ActionContext actionContext,
             IModelValidatorProvider validatorProvider,
